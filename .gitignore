@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.env
+*.egg-info/
+
+# Données sensibles
+data/raw/*.csv
+data/raw/*.json
+data/processed/
+
+# PostgreSQL
+*.sql.bak
+pgdata/
+
+# MongoDB
+mongo_data/
+
+# Airflow
+airflow/logs/
+airflow/plugins/
+airflow.db
+
+# dbt
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# Spark
+derby.log
+metastore_db/
+
+# Cloud credentials — NE JAMAIS VERSIONNER
+*.pem
+*.key
+*credentials*
+*secret*
+.aws/
+.gcp/
+service-account*.json
+
+# Docker
+.docker/
+
+# Power BI
+*.pbix
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp

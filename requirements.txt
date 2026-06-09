@@ -1,0 +1,28 @@
+# Base
+python-dotenv>=1.0.0
+
+# Data
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Bases de données
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+pymongo>=4.0.0
+
+# ETL / Pipeline
+apache-airflow>=2.7.0
+
+# Big Data
+pyspark>=3.4.0
+
+# Cloud
+boto3>=1.26.0          # AWS
+google-cloud-bigquery>=3.0.0  # GCP
+
+# Visualisation
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Tests
+pytest>=7.0.0
