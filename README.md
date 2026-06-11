@@ -1,7 +1,7 @@
 # MohdataShop — Pipeline Data End-to-End
 
 Pipeline de données complet pour **MohdataShop**, boutique e-commerce fictive basée à Abidjan.
-Projet fil conducteur de ma transition vers Data Engineer Junior — construit progressivement
+Projet fil conducteur de ma transition vers Data Engineer Junior - construit progressivement
 au fil des modules : SQL → Bases de Données → Docker → Cloud → Pipelines & ETL.
 
 ---
@@ -10,7 +10,7 @@ au fil des modules : SQL → Bases de Données → Docker → Cloud → Pipeline
 
 | Dimension      | Détail |
 |----------------|--------|
-| Activité       | E-commerce — électronique, textile, alimentaire |
+| Activité       | E-commerce - électronique, textile, alimentaire |
 | Localisation   | Abidjan, Côte d'Ivoire |
 | Clients        | Zone UEMOA : CI, Sénégal, Mali, Burkina Faso |
 | Paiements      | Mobile Money (MTN, Orange, Wave) · Carte · Cash |
@@ -23,9 +23,9 @@ au fil des modules : SQL → Bases de Données → Docker → Cloud → Pipeline
 ```
 Sources              Transform                 Load              Visualise
 -------              ---------                 ----              ---------
-CSV / API    →       Python + dbt      →       PostgreSQL   →   Power BI
-PostgreSQL   →       PySpark           →       S3 / Redshift →  Dashboard
-MongoDB      →       Airflow DAG       →       BigQuery     →   Rapport
+CSV / API    =>       Python + dbt      =>       PostgreSQL   =>   Power BI
+PostgreSQL   =>       PySpark           =>       S3 / Redshift =>  Dashboard
+MongoDB      =>       Airflow DAG       =>       BigQuery     =>   Rapport
 ```
 
 ---
@@ -34,12 +34,12 @@ MongoDB      →       Airflow DAG       →       BigQuery     →   Rapport
 
 | Module | Dossier | Statut |
 |--------|---------|--------|
-| SQL N1→N6 | `sql/` | 🔲 |
-| Bases de Données (PostgreSQL + MongoDB) | `database/` | 🔲 |
-| Docker | `docker/` | 🔲 |
-| Cloud AWS/GCP | `cloud/` | 🔲 |
-| Pipelines & ETL (Airflow + dbt + Spark) | `pipelines/` + `spark/` | 🔲 |
-| Power BI | `powerbi/` | 🔲 |
+| SQL N1→N6 | sql | - |
+| Bases de Données (PostgreSQL + MongoDB) | database | - |
+| Docker | docker | - |
+| Cloud AWS/GCP | cloud | - |
+| Pipelines & ETL (Airflow + dbt + Spark) | pipelines + spark | - |
+| Power BI | powerbi | - |
 
 ---
 
@@ -82,27 +82,27 @@ avis_clients    { client_id, produit_id, note, commentaire, date }
 ## Structure du projet
 
 ```
-mohdatashop-pipeline/
-├── data/
-│   ├── raw/           # Données brutes (CSV, JSON)
-│   └── processed/     # Données transformées
-├── sql/
-│   ├── schema/        # Création des tables
-│   ├── queries/       # Requêtes d'analyse
-│   └── migrations/    # Évolutions du schéma
-├── database/
-│   ├── postgresql/    # Config + scripts PostgreSQL
-│   └── mongodb/       # Config + scripts MongoDB
-├── etl/               # Scripts Python ETL
-├── pipelines/
-│   ├── airflow/       # DAGs Airflow
-│   └── dbt/           # Modèles dbt
-├── spark/             # Scripts PySpark
-├── cloud/
-│   ├── aws/           # Configs AWS
-│   └── gcp/           # Configs GCP
-├── docker/            # Dockerfiles + docker-compose
-└── powerbi/           # Rapports .pbix
+mohdatashop-pipeline
+├── data
+│   ├── raw           # Données brutes (CSV, JSON)
+│   └── processed     # Données transformées
+├── sql
+│   ├── schema        # Création des tables
+│   ├── queries       # Requêtes d'analyse
+│   └── migrations    # Évolutions du schéma
+├── database
+│   ├── postgresql    # Config + scripts PostgreSQL
+│   └── mongodb       # Config + scripts MongoDB
+├── etl               # Scripts Python ETL
+├── pipelines
+│   ├── airflow       # DAGs Airflow
+│   └── dbt           # Modèles dbt
+├── spark             # Scripts PySpark
+├── cloud
+│   ├── aws           # Configs AWS
+│   └── gcp           # Configs GCP
+├── docker            # Dockerfiles + docker-compose
+└── powerbi           # Rapports .pbix
 ```
 
 ---
