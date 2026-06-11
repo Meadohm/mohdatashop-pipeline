@@ -2,7 +2,7 @@
 
 Pipeline de données complet pour **MohdataShop**, boutique e-commerce fictive basée à Abidjan.
 Projet fil conducteur de ma transition vers Data Engineer Junior - construit progressivement
-au fil des modules : SQL → Bases de Données → Docker → Cloud → Pipelines & ETL.
+au fil des modules : SQL => Bases de Données => Docker => Cloud => Pipelines & ETL.
 
 ---
 
@@ -23,9 +23,9 @@ au fil des modules : SQL → Bases de Données → Docker → Cloud → Pipeline
 ```
 Sources              Transform                 Load              Visualise
 -------              ---------                 ----              ---------
-CSV / API    =>       Python + dbt      =>       PostgreSQL   =>   Power BI
-PostgreSQL   =>       PySpark           =>       S3 / Redshift =>  Dashboard
-MongoDB      =>       Airflow DAG       =>       BigQuery     =>   Rapport
+CSV / API    =>      Python + dbt      =>      PostgreSQL     => Power BI
+PostgreSQL   =>      PySpark           =>      S3 / Redshift  => Dashboard
+MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
 ```
 
 ---
