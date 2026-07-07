@@ -1,0 +1,40 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: mohdata-pg
+    environment:
+      POSTGRES_PASSWORD: mohdata123
+      POSTGRES_DB: mohdatashop
+    ports:
+      - "5432:5432"
+    volumes:
+      - mohdata-pg-data:/var/lib/postgresql/data
+    networks:
+      - mohdata
+
+  mongodb:
+    image: mongo:7
+    container_name: mohdata-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mohdata-mongo-data:/data/db
+    networks:
+      - mohdata
+
+  etl:
+    build: ./etl
+    container_name: mohdata-etl
+    depends_on:
+      - postgres
+      - mongodb
+    networks:
+      - mohdata
+
+volumes:
+  mohdata-pg-data:
+  mohdata-mongo-data:
+
+networks:
+  mohdata:
