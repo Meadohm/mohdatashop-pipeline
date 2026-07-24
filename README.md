@@ -67,7 +67,8 @@ paiements   (id, commande_id, methode, montant, statut, date_paiement)  -- rempl
 livraisons  (id, commande_id, ville, adresse, statut, date_livraison)
 ```
 
-Diagramme ERD (MLD) : [`database/postgresql/docs/erd_mohdatashop.md`](database/postgresql/docs/erd_mohdatashop.md) (rendu natif GitHub)
+Diagramme ERD (MLD) : [`database/postgresql/docs/erd_mohdatashop.md`](database/postgresql/docs/erd_mohdatashop.md)
+
 Source éditable : `database/postgresql/docs/erd_mohdatashop.mermaid`
 
 Migrations appliquées en base : voir `database/postgresql/migrations/`
