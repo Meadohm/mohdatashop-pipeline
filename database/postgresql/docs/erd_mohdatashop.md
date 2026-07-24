@@ -16,7 +16,7 @@ erDiagram
     varchar ville
     varchar pays
     varchar telephone
-    varchar moyen_paiement "a reevaluer - cf README"
+    varchar moyen_paiement
   }
   CATEGORIES {
     serial id PK
@@ -44,3 +44,5 @@ erDiagram
     numeric prix_unitaire
   }
 ```
+
+⚠️ `clients.moyen_paiement` — à réévaluer (cf. `README.md`, section Schéma de base de données).
