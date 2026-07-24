@@ -8,13 +8,13 @@ au fil des modules : SQL => Bases de Données => Docker => Cloud => Pipelines & 
 
 ## Contexte métier
 
-| Dimension      | Détail |
-|----------------|--------|
-| Activité       | E-commerce - électronique, textile, alimentaire |
-| Localisation   | Abidjan, Côte d'Ivoire |
-| Clients        | Zone UEMOA : CI, Sénégal, Mali, Burkina Faso |
-| Paiements      | Mobile Money (MTN, Orange, Wave) · Carte · Cash |
-| Livraisons     | Abidjan + villes secondaires |
+| Dimension    | Détail                                          |
+| ------------ | ----------------------------------------------- |
+| Activité     | E-commerce - électronique, textile, alimentaire |
+| Localisation | Abidjan, Côte d'Ivoire                          |
+| Clients      | Zone UEMOA : CI, Sénégal, Mali, Burkina Faso    |
+| Paiements    | Mobile Money (MTN, Orange, Wave) · Carte · Cash |
+| Livraisons   | Abidjan + villes secondaires                    |
 
 ---
 
@@ -32,30 +32,47 @@ MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
 
 ## Roadmap de construction
 
-| Module | Dossier | Statut |
-|--------|---------|--------|
-| SQL N1→N6 | sql | - |
-| Bases de Données (PostgreSQL + MongoDB) | database | - |
-| Docker | docker | - |
-| Cloud AWS/GCP | cloud | - |
-| Pipelines & ETL (Airflow + dbt + Spark) | pipelines + spark | - |
-| Power BI | powerbi | - |
+| Module                                  | Dossier           | Statut   |
+| --------------------------------------- | ----------------- | -------- |
+| SQL N1→N6                               | sql               | Terminé  |
+| Bases de Données (PostgreSQL + MongoDB) | database          | En cours |
+| Docker                                  | docker            | Terminé  |
+| Cloud AWS/GCP                           | cloud             | -        |
+| Pipelines & ETL (Airflow + dbt + Spark) | pipelines + spark | -        |
+| Power BI                                | powerbi           | Terminé  |
 
 ---
 
 ## Schéma de base de données
 
+**Implémenté en base (PostgreSQL) :**
+
 ```
-clients      (id, nom, email, telephone, ville, pays, date_inscription)
-categories   (id, nom)
-produits     (id, nom, categorie_id, prix, stock, description)
-commandes    (id, client_id, date_commande, statut, montant_total)
-lignes_cmde  (id, commande_id, produit_id, quantite, prix_unitaire)
-paiements    (id, commande_id, methode, montant, statut, date_paiement)
-livraisons   (id, commande_id, ville, adresse, statut, date_livraison)
+clients          (id, nom, ville, pays, telephone, moyen_paiement ⚠️)
+categories       (id, nom)
+produits         (id, nom, categorie_id → categories.id, prix, stock)
+commandes        (id, client_id → clients.id, date_commande, statut, ville_livraison)
+lignes_commande  (id, commande_id → commandes.id, produit_id → produits.id, quantite, prix_unitaire)
 ```
 
+⚠️ `clients.moyen_paiement` — à réévaluer. C'est un attribut figé par client (1 valeur), alors que le moyen de paiement réel peut varier par commande. La source de vérité transactionnelle sera la future table `paiements` (montant, statut, date par paiement). `clients.moyen_paiement` ne sera conservé que comme préférence déclarative optionnelle (ex : moyen par défaut pré-rempli en UI), pas comme donnée de paiement fiable — à trancher lors de la migration 002.
+
+**Prévu (schéma cible, migrations à venir) :**
+
+```
+clients    + email, date_inscription
+produits   + description
+commandes  + montant_total (calculé depuis lignes_commande, ou via trigger)
+paiements   (id, commande_id, methode, montant, statut, date_paiement)  -- remplace l'usage réel de moyen_paiement
+livraisons  (id, commande_id, ville, adresse, statut, date_livraison)
+```
+
+Migrations appliquées en base : voir `database/postgresql/migrations/`
+
+- `001_normalize_categories.sql` appliquée (exécutée via `psql`) — extraction de `produits.categorie` (texte) vers table `categories` + FK
+
 Collections MongoDB :
+
 ```
 logs_activite   { user_id, action, timestamp, metadata }
 historique_prix { produit_id, prix, date_changement }
@@ -66,16 +83,16 @@ avis_clients    { client_id, produit_id, note, commentaire, date }
 
 ## Stack technique
 
-| Couche | Outils |
-|--------|--------|
-| Langage | Python 3.10+ |
-| Base de données | PostgreSQL · MongoDB |
-| Orchestration | Apache Airflow 2.x |
-| Transformation | dbt · Pandas · PySpark |
-| Cloud | AWS (S3, Redshift, Glue) · GCP (BigQuery) |
-| Conteneurisation | Docker · Docker Compose |
-| Visualisation | Power BI |
-| Versioning | Git · GitHub |
+| Couche           | Outils                                    |
+| ---------------- | ----------------------------------------- |
+| Langage          | Python 3.10+                              |
+| Base de données  | PostgreSQL · MongoDB                      |
+| Orchestration    | Apache Airflow 2.x                        |
+| Transformation   | dbt · Pandas · PySpark                    |
+| Cloud            | AWS (S3, Redshift, Glue) · GCP (BigQuery) |
+| Conteneurisation | Docker · Docker Compose                   |
+| Visualisation    | Power BI                                  |
+| Versioning       | Git · GitHub                              |
 
 ---
 
@@ -87,11 +104,12 @@ mohdatashop-pipeline
 │   ├── raw           # Données brutes (CSV, JSON)
 │   └── processed     # Données transformées
 ├── sql
-│   ├── schema        # Création des tables
+│   ├── schema        # Création des tables (schéma initial)
 │   ├── queries       # Requêtes d'analyse
 │   └── migrations    # Évolutions du schéma
 ├── database
-│   ├── postgresql    # Config + scripts PostgreSQL
+│   ├── postgresql
+│   │   └── migrations  # Migrations SQL versionnées (001, 002, ...)
 │   └── mongodb       # Config + scripts MongoDB
 ├── etl               # Scripts Python ETL
 ├── pipelines
