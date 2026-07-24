@@ -3,6 +3,11 @@
 Diagramme entité-relation du schéma actuellement en base (MLD).
 Source éditable : `erd_mohdatashop.mermaid`
 
+![ERD MohdataShop](erd_mohdatashop.png)
+
+<details>
+<summary>Voir le code mermaid source</summary>
+
 ```mermaid
 erDiagram
   CLIENTS ||--o{ COMMANDES : passe
@@ -44,5 +49,7 @@ erDiagram
     numeric prix_unitaire
   }
 ```
+
+</details>
 
 ⚠️ `clients.moyen_paiement` — à réévaluer (cf. `README.md`, section Schéma de base de données).
