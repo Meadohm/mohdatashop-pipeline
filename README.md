@@ -74,6 +74,7 @@ Source éditable : `database/postgresql/docs/erd_mohdatashop.mermaid`
 Migrations appliquées en base : voir `database/postgresql/migrations/`
 
 - `001_normalize_categories.sql` appliquée (exécutée via `psql`) — extraction de `produits.categorie` (texte) vers table `categories` + FK
+- `002_constraints_enum_index.sql` ⏳ écrite, pas encore appliquée — CHECK (prix/stock/quantité positifs), ENUM `statut_commande`, index sur les colonnes FK
 
 Collections MongoDB :
 
