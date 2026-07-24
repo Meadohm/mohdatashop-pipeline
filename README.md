@@ -55,7 +55,7 @@ commandes        (id, client_id → clients.id, date_commande, statut, ville_liv
 lignes_commande  (id, commande_id → commandes.id, produit_id → produits.id, quantite, prix_unitaire)
 ```
 
-⚠️ `clients.moyen_paiement` — à réévaluer. C'est un attribut figé par client (1 valeur), alors que le moyen de paiement réel peut varier par commande. La source de vérité transactionnelle sera la future table `paiements` (montant, statut, date par paiement). `clients.moyen_paiement` ne sera conservé que comme préférence déclarative optionnelle (ex : moyen par défaut pré-rempli en UI), pas comme donnée de paiement fiable — à trancher lors de la migration 002.
+⚠️ `clients.moyen_paiement` — décision prise en N4 (migration 002) : conservé comme préférence déclarative uniquement, pas comme donnée de paiement fiable. La source de vérité transactionnelle sera la future table `paiements` (montant, statut, date par paiement).
 
 **Prévu (schéma cible, migrations à venir) :**
 
