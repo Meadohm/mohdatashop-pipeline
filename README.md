@@ -67,6 +67,9 @@ paiements   (id, commande_id, methode, montant, statut, date_paiement)  -- rempl
 livraisons  (id, commande_id, ville, adresse, statut, date_livraison)
 ```
 
+Diagramme ERD (MLD) : [`database/postgresql/docs/erd_mohdatashop.md`](database/postgresql/docs/erd_mohdatashop.md) (rendu natif GitHub)
+Source éditable : `database/postgresql/docs/erd_mohdatashop.mermaid`
+
 Migrations appliquées en base : voir `database/postgresql/migrations/`
 
 - `001_normalize_categories.sql` appliquée (exécutée via `psql`) — extraction de `produits.categorie` (texte) vers table `categories` + FK
@@ -101,26 +104,27 @@ avis_clients    { client_id, produit_id, note, commentaire, date }
 ```
 mohdatashop-pipeline
 ├── data
-│   ├── raw           # Données brutes (CSV, JSON)
-│   └── processed     # Données transformées
+│   ├── raw             # Données brutes (CSV, JSON)
+│   └── processed       # Données transformées
 ├── sql
-│   ├── schema        # Création des tables (schéma initial)
-│   ├── queries       # Requêtes d'analyse
-│   └── migrations    # Évolutions du schéma
+│   ├── schema          # Création des tables (schéma initial)
+│   ├── queries         # Requêtes d'analyse
+│   └── migrations      # Évolutions du schéma
 ├── database
 │   ├── postgresql
-│   │   └── migrations  # Migrations SQL versionnées (001, 002, ...)
-│   └── mongodb       # Config + scripts MongoDB
-├── etl               # Scripts Python ETL
+│   │   ├── migrations  # Migrations SQL versionnées (001, 002, ...)
+│   │   └── docs        # ERD et documentation du schéma
+│   └── mongodb         # Config + scripts MongoDB
+├── etl                 # Scripts Python ETL
 ├── pipelines
-│   ├── airflow       # DAGs Airflow
-│   └── dbt           # Modèles dbt
-├── spark             # Scripts PySpark
+│   ├── airflow         # DAGs Airflow
+│   └── dbt             # Modèles dbt
+├── spark               # Scripts PySpark
 ├── cloud
-│   ├── aws           # Configs AWS
-│   └── gcp           # Configs GCP
-├── docker            # Dockerfiles + docker-compose
-└── powerbi           # Rapports .pbix
+│   ├── aws             # Configs AWS
+│   └── gcp             # Configs GCP
+├── docker              # Dockerfiles + docker-compose
+└── powerbi             # Rapports .pbix
 ```
 
 ---
