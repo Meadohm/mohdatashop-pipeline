@@ -51,18 +51,19 @@ MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
 clients          (id, nom, ville, pays, telephone, moyen_paiement ⚠️)
 categories       (id, nom)
 produits         (id, nom, categorie_id → categories.id, prix, stock)
-commandes        (id, client_id → clients.id, date_commande, statut, ville_livraison)
+commandes        (id, client_id → clients.id, date_commande, statut, ville_livraison, montant_total)
 lignes_commande  (id, commande_id → commandes.id, produit_id → produits.id, quantite, prix_unitaire)
 ```
 
 ⚠️ `clients.moyen_paiement` — décision prise en N4 (migration 002) : conservé comme préférence déclarative uniquement, pas comme donnée de paiement fiable. La source de vérité transactionnelle sera la future table `paiements` (montant, statut, date par paiement).
+
+`commandes.montant_total` — implémenté en N6 (migration 004) : maintenu automatiquement par trigger (`trg_maj_montant`), jamais mis à jour manuellement. Voir fonction `calculer_montant_commande()`.
 
 **Prévu (schéma cible, migrations à venir) :**
 
 ```
 clients    + email, date_inscription
 produits   + description
-commandes  + montant_total (calculé depuis lignes_commande, ou via trigger)
 paiements   (id, commande_id, methode, montant, statut, date_paiement)  -- remplace l'usage réel de moyen_paiement
 livraisons  (id, commande_id, ville, adresse, statut, date_livraison)
 ```
@@ -76,6 +77,15 @@ Migrations appliquées en base : voir `database/postgresql/migrations/`
 - `001_normalize_categories.sql` appliquée (exécutée via `psql`) — extraction de `produits.categorie` (texte) vers table `categories` + FK
 - `002_constraints_enum_index.sql` appliquée (exécutée via `psql`) — CHECK (prix/stock/quantité positifs), ENUM `statut_commande`, index sur les colonnes FK
 - `003_drop_unused_index.sql` appliquée (exécutée via `psql`) — suppression de `idx_commandes_client_statut`, index présent en base sans trace dans les migrations versionnées, `idx_scan = 0` confirmé via `pg_stat_user_indexes` avant suppression
+- `004_montant_total_trigger.sql` appliquée (exécutée via `psql`) — ajout `commandes.montant_total`, fonction `calculer_montant_commande()`, trigger `trg_maj_montant` (recalcul automatique), vue `vue_commandes_detail`
+
+Objets SQL disponibles :
+
+| Type | Nom | Rôle |
+|---|---|---|
+| Fonction | `calculer_montant_commande(id)` | Calcule le total réel d'une commande depuis `lignes_commande` |
+| Trigger | `trg_maj_montant` | Recalcule `montant_total` à chaque INSERT/UPDATE/DELETE sur `lignes_commande` |
+| Vue | `vue_commandes_detail` | Jointure clients + commandes prête à l'emploi |
 
 Collections MongoDB :
 
