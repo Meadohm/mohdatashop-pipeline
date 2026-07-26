@@ -33,13 +33,13 @@ MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
 ## Roadmap de construction
 
 | Module                                  | Dossier           | Statut   |
-| --------------------------------------- | ----------------- | -------- |
+| --------------------------------------- | ------------------| ---------|
 | SQL N1→N6                               | sql               | Terminé  |
 | Bases de Données (PostgreSQL + MongoDB) | database          | En cours |
 | Docker                                  | docker            | Terminé  |
 | Cloud AWS/GCP                           | cloud             | -        |
 | Pipelines & ETL (Airflow + dbt + Spark) | pipelines + spark | -        |
-| Power BI                                | powerbi           | Terminé  |
+| Power BI                                | powerbi           | -        |
 
 ---
 
@@ -75,6 +75,7 @@ Migrations appliquées en base : voir `database/postgresql/migrations/`
 
 - `001_normalize_categories.sql` appliquée (exécutée via `psql`) — extraction de `produits.categorie` (texte) vers table `categories` + FK
 - `002_constraints_enum_index.sql` appliquée (exécutée via `psql`) — CHECK (prix/stock/quantité positifs), ENUM `statut_commande`, index sur les colonnes FK
+- `003_drop_unused_index.sql` appliquée (exécutée via `psql`) — suppression de `idx_commandes_client_statut`, index présent en base sans trace dans les migrations versionnées, `idx_scan = 0` confirmé via `pg_stat_user_indexes` avant suppression
 
 Collections MongoDB :
 
@@ -89,7 +90,7 @@ avis_clients    { client_id, produit_id, note, commentaire, date }
 ## Stack technique
 
 | Couche           | Outils                                    |
-| ---------------- | ----------------------------------------- |
+| ---------------- | ------------------------------------------ |
 | Langage          | Python 3.10+                              |
 | Base de données  | PostgreSQL · MongoDB                      |
 | Orchestration    | Apache Airflow 2.x                        |
