@@ -45,30 +45,25 @@ MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
 
 ## Schéma de base de données
 
-**Implémenté en base (PostgreSQL) :**
+**Implémenté en base (PostgreSQL) — schéma relationnel clos :**
 
 ```
-clients          (id, nom, ville, pays, telephone, moyen_paiement ⚠️)
+clients          (id, nom, ville, pays, telephone, moyen_paiement, email, date_inscription)
 categories       (id, nom)
-produits         (id, nom, categorie_id → categories.id, prix, stock)
+produits         (id, nom, categorie_id → categories.id, prix, stock, description)
 commandes        (id, client_id → clients.id, date_commande, statut, ville_livraison, montant_total)
 lignes_commande  (id, commande_id → commandes.id, produit_id → produits.id, quantite, prix_unitaire)
+paiements        (id, commande_id → commandes.id, methode, montant, statut, date_paiement)
+livraisons       (id, commande_id → commandes.id, ville, adresse, statut, date_livraison)
 ```
 
-⚠️ `clients.moyen_paiement` — décision prise en N4 (migration 002) : conservé comme préférence déclarative uniquement, pas comme donnée de paiement fiable. La source de vérité transactionnelle sera la future table `paiements` (montant, statut, date par paiement).
+`clients.moyen_paiement` — décision prise en N4 (migration 002) : conservé comme préférence déclarative uniquement, pas comme donnée de paiement fiable. La source de vérité transactionnelle est la table `paiements` (méthode réellement utilisée par commande, montant, statut, date).
 
 `commandes.montant_total` — implémenté en N6 (migration 004) : maintenu automatiquement par trigger (`trg_maj_montant`), jamais mis à jour manuellement. Voir fonction `calculer_montant_commande()`.
 
-**Prévu (schéma cible, migrations à venir) :**
+`clients.email`, `clients.date_inscription`, `produits.description`, `paiements`, `livraisons` — implémentés en migration 005, clôturant le schéma relationnel cible défini depuis le début du projet.
 
-```
-clients    + email, date_inscription
-produits   + description
-paiements   (id, commande_id, methode, montant, statut, date_paiement)  -- remplace l'usage réel de moyen_paiement
-livraisons  (id, commande_id, ville, adresse, statut, date_livraison)
-```
-
-Diagramme ERD (MLD) : [`database/postgresql/docs/erd_mohdatashop.md`](database/postgresql/docs/erd_mohdatashop.md)
+Diagramme ERD (MLD) : [`database/postgresql/docs/erd_mohdatashop.md`](database/postgresql/docs/erd_mohdatashop.md) — 7 tables, synchronisé avec migration 005
 
 Source éditable : `database/postgresql/docs/erd_mohdatashop.mermaid`
 
@@ -78,6 +73,7 @@ Migrations appliquées en base : voir `database/postgresql/migrations/`
 - `002_constraints_enum_index.sql` appliquée (exécutée via `psql`) — CHECK (prix/stock/quantité positifs), ENUM `statut_commande`, index sur les colonnes FK
 - `003_drop_unused_index.sql` appliquée (exécutée via `psql`) — suppression de `idx_commandes_client_statut`, index présent en base sans trace dans les migrations versionnées, `idx_scan = 0` confirmé via `pg_stat_user_indexes` avant suppression
 - `004_montant_total_trigger.sql` appliquée (exécutée via `psql`) — ajout `commandes.montant_total`, fonction `calculer_montant_commande()`, trigger `trg_maj_montant` (recalcul automatique), vue `vue_commandes_detail`
+- `005_close_target_schema.sql` appliquée (exécutée via `psql`) — `clients.email`/`date_inscription`, `produits.description`, tables `paiements` et `livraisons` (ENUM `statut_paiement`, index sur FK)
 
 Objets SQL disponibles :
 
