@@ -83,20 +83,25 @@ Objets SQL disponibles :
 | Trigger | `trg_maj_montant` | Recalcule `montant_total` à chaque INSERT/UPDATE/DELETE sur `lignes_commande` |
 | Vue | `vue_commandes_detail` | Jointure clients + commandes prête à l'emploi |
 
-Collections MongoDB :
+Collections MongoDB — implémentées en N7 (`database/mongodb/`) :
 
 ```
 logs_activite   { user_id, action, timestamp, metadata }
 historique_prix { produit_id, prix, date_changement }
-avis_clients    { client_id, produit_id, note, commentaire, date }
+avis_clients    { client_id, produit_id, note, commentaire, date, verified_purchase ⚠️ }
 ```
+
+⚠️ `avis_clients.verified_purchase` — champ absent du schéma initial, ajouté a posteriori via `db.avis_clients.updateMany({}, {$set: {verified_purchase: true}})` dans `exemples_crud.js`, pour illustrer concrètement un avantage du NoSQL : ajout d'un champ à tous les documents existants sans migration `ALTER TABLE`. Volontaire, pas une dérive.
+
+- `init_collections.js` — création des 3 collections (validation de schéma souple `$jsonSchema`), données d'exemple, index
+- `exemples_crud.js` — CRUD + agrégation commentés, comparés aux équivalents SQL, incluant l'ajout dynamique de `verified_purchase`
 
 ---
 
 ## Stack technique
 
 | Couche           | Outils                                    |
-| ---------------- | ------------------------------------------ |
+| ---------------- | ----------------------------------------- |
 | Langage          | Python 3.10+                              |
 | Base de données  | PostgreSQL · MongoDB                      |
 | Orchestration    | Apache Airflow 2.x                        |
