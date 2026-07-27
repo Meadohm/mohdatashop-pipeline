@@ -107,6 +107,13 @@ Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sq
 
 ⚠️ Copier `.env.example` en `.env` avant utilisation, remplir les credentials réels. `.env` doit être dans `.gitignore`.
 
+**Pipeline complet (N10)** — `etl/`, referme la roadmap Bases de Données :
+
+- `generate_fake_data.py` — génère **300 clients** (PostgreSQL) + **8000 `logs_activite`** (MongoDB) + **avis pour ~15% des clients** (MongoDB, distribution de notes réaliste pondérée positive) via **Faker** (locale `fr_FR`). Remplace le volume trop faible des données statiques (8 clients réutilisés en boucle, 2 avis fixes) par un jeu de données réaliste. Utile aussi pour observer un vrai `Index Scan` côté PostgreSQL avec du volume (cf. N4, limite atteinte faute de volume à l'époque)
+- `pipeline_rapport.py` — pipeline final : extrait ventes (PostgreSQL, via `get_postgres_engine()` SQLAlchemy) + avis + activité (MongoDB), croise avec Pandas, exporte `data/processed/rapport_produits.csv`
+
+⚠️ `faker` et `sqlalchemy` (déjà présent) requis dans `requirements.txt`
+
 ---
 
 ## Stack technique
