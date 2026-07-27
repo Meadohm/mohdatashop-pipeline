@@ -53,4 +53,5 @@ service-account*.json
 # IDE
 .vscode/
 .idea/
-*.swpdocker/.env
+*.swp
+docker/.env

@@ -98,6 +98,13 @@ avis_clients    { client_id, produit_id, note, commentaire, date, verified_purch
 
 Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sql_vs_nosql.md) — critère de décision et répartition PostgreSQL/MongoDB appliquée à MohdataShop, vérifiées en conditions réelles via `mongosh` interactif
 
+**Connexion Python → PostgreSQL + MongoDB (N9)** — `etl/` :
+
+- `db_connections.py` — connexions réutilisables (`psycopg2` + `pymongo`), credentials via `.env` (jamais commité)
+- `fiche_produit_enrichie.py` — premier croisement réel des deux SGBD : fiche produit combinant données relationnelles (PostgreSQL) + historique de prix et avis (MongoDB), assemblés côté Python
+
+⚠️ Copier `.env.example` en `.env` avant utilisation, remplir les credentials réels. `.env` doit être dans `.gitignore`.
+
 ---
 
 ## Stack technique
