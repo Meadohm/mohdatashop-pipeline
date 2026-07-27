@@ -83,6 +83,8 @@ Objets SQL disponibles :
 | Trigger | `trg_maj_montant` | Recalcule `montant_total` à chaque INSERT/UPDATE/DELETE sur `lignes_commande` |
 | Vue | `vue_commandes_detail` | Jointure clients + commandes prête à l'emploi |
 
+Transactions et isolation (N5) : [`sql/queries/test_transaction_stock.sql`](sql/queries/test_transaction_stock.sql) — script de démonstration de l'isolation `READ COMMITTED` + rôle du `CHECK` (migration 002) comme filet de sécurité, testé en conditions réelles avec deux sessions `psql` concurrentes
+
 Collections MongoDB — implémentées en N7 (`database/mongodb/`) :
 
 ```
