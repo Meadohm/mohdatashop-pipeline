@@ -96,6 +96,8 @@ avis_clients    { client_id, produit_id, note, commentaire, date, verified_purch
 - `init_collections.js` — création des 3 collections (validation de schéma souple `$jsonSchema`), données d'exemple, index
 - `exemples_crud.js` — CRUD + agrégation commentés, comparés aux équivalents SQL, incluant l'ajout dynamique de `verified_purchase`
 
+Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sql_vs_nosql.md) — critère de décision et répartition PostgreSQL/MongoDB appliquée à MohdataShop, vérifiées en conditions réelles via `mongosh` interactif
+
 ---
 
 ## Stack technique
@@ -128,7 +130,8 @@ mohdatashop-pipeline
 │   ├── postgresql
 │   │   ├── migrations  # Migrations SQL versionnées (001, 002, ...)
 │   │   └── docs        # ERD et documentation du schéma
-│   └── mongodb         # Config + scripts MongoDB
+│   ├── mongodb         # Config + scripts MongoDB
+│   └── docs            # Documentation transversale (SQL vs NoSQL, etc.)
 ├── etl                 # Scripts Python ETL
 ├── pipelines
 │   ├── airflow         # DAGs Airflow
