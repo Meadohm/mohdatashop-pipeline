@@ -53,9 +53,39 @@ services:
     networks:
       - mohdata
 
+  airflow:
+    build:
+      context: ..
+      dockerfile: docker/airflow-image/Dockerfile
+    container_name: mohdata-airflow
+    command: standalone
+    env_file: .env.docker
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      PYTHONPATH: /opt/airflow
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: mohdatashop
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DATABASE: mohdatashop
+    ports:
+      - "8080:8080"
+    volumes:
+      - mohdata-airflow-meta:/opt/airflow
+      - ../pipelines/airflow/dags:/opt/airflow/dags
+      - ../etl:/opt/airflow/etl
+      - ../data/processed:/opt/airflow/data/processed
+    depends_on:
+      - postgres
+      - mongodb
+    networks:
+      - mohdata
+
 volumes:
   mohdata-pg-data:
   mohdata-mongo-data:
+  mohdata-airflow-meta:
 
 networks:
   mohdata:

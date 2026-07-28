@@ -11,6 +11,8 @@ COPY --from=builder /install /usr/local
 COPY etl/ ./etl
 COPY docker/etl-image/wait_and_run.py ./etl/wait_and_run.py
 
+ENV PYTHONPATH=/app
+
 RUN mkdir -p /app/data/processed
 RUN useradd -m etluser && chown -R etluser /app
 USER etluser
