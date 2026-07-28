@@ -23,7 +23,7 @@ clients/10 produits initiaux restent la référence "métier" du projet.
 import random
 
 from faker import Faker
-from db_connections import get_postgres_connection, get_mongo_database
+from etl.db_connections import get_postgres_connection, get_mongo_database
 
 fake = Faker("fr_FR")  # locale française, cohérent avec le contexte UEMOA
 

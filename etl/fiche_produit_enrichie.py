@@ -10,7 +10,7 @@ C'est le point clé de N9 : MongoDB ne peut pas faire de JOIN avec une
 table PostgreSQL. Le croisement se fait ici, côté Python.
 """
 
-from db_connections import get_postgres_connection, get_mongo_database
+from etl.db_connections import get_postgres_connection, get_mongo_database
 
 
 def get_fiche_produit(produit_id: int) -> dict:

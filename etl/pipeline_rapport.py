@@ -10,8 +10,8 @@ Referme la roadmap Bases de Données (N1 -> N10).
 
 import pandas as pd
 
-from db_connections import get_postgres_engine, get_mongo_database
-
+from etl.db_connections import get_postgres_engine, get_mongo_database
+from pathlib import Path
 
 def extraire_ventes_postgres() -> pd.DataFrame:
     """Extrait les ventes par produit depuis PostgreSQL."""
@@ -78,6 +78,10 @@ if __name__ == "__main__":
 
     print(rapport.to_string(index=False))
 
-    chemin_sortie = "../data/processed/rapport_produits.csv"
+    # Chemin ancré sur la position du fichier, pas sur le cwd —
+    # fonctionne identiquement en lancement direct et sous Airflow.
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    chemin_sortie = BASE_DIR / "data" / "processed" / "rapport_produits.csv"
+    chemin_sortie.parent.mkdir(parents=True, exist_ok=True)  # crée le dossier s'il n'existe pas
     rapport.to_csv(chemin_sortie, index=False)
     print(f"\nRapport exporté : {chemin_sortie}")
