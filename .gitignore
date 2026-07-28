@@ -43,6 +43,7 @@ service-account*.json
 
 # Docker
 .docker/
+docker/.env.docker
 
 # Power BI
 *.pbix
@@ -54,4 +55,3 @@ service-account*.json
 .vscode/
 .idea/
 *.swp
-docker/.env

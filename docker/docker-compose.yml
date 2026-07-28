@@ -1,15 +1,23 @@
 services:
-
   postgres:
     image: postgres:15
     container_name: mohdata-pg
+    env_file: .env.docker
     environment:
-      POSTGRES_PASSWORD: mohdata123
       POSTGRES_DB: mohdatashop
     ports:
       - "5432:5432"
     volumes:
       - mohdata-pg-data:/var/lib/postgresql/data
+      # Init auto au premier démarrage (dossier vide) : schéma + migrations,
+      # dans l'ordre — noms renommés côté conteneur pour garantir le tri
+      # alphabétique (00 avant 01, 02...), sans toucher aux vrais fichiers.
+      - ../sql/schema/00_schema_mohdatashop.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
+      - ../database/postgresql/migrations/001_normalize_categories.sql:/docker-entrypoint-initdb.d/01_normalize_categories.sql:ro
+      - ../database/postgresql/migrations/002_constraints_enum_index.sql:/docker-entrypoint-initdb.d/02_constraints_enum_index.sql:ro
+      - ../database/postgresql/migrations/003_drop_unused_index.sql:/docker-entrypoint-initdb.d/03_drop_unused_index.sql:ro
+      - ../database/postgresql/migrations/004_montant_total_trigger.sql:/docker-entrypoint-initdb.d/04_montant_total_trigger.sql:ro
+      - ../database/postgresql/migrations/005_close_target_schema.sql:/docker-entrypoint-initdb.d/05_close_target_schema.sql:ro
     networks:
       - mohdata
 
@@ -20,12 +28,25 @@ services:
       - "27017:27017"
     volumes:
       - mohdata-mongo-data:/data/db
+      # Init auto au premier démarrage : 3 collections + données de départ (N7)
+      - ../database/mongodb/init_collections.js:/docker-entrypoint-initdb.d/init_collections.js:ro
     networks:
       - mohdata
 
   etl:
-    build: ./etl
+    build:
+      context: ..
+      dockerfile: docker/etl-image/Dockerfile
     container_name: mohdata-etl
+    env_file: .env.docker
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: mohdatashop
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DATABASE: mohdatashop
+    volumes:
+      - ../data/processed:/app/data/processed
     depends_on:
       - postgres
       - mongodb

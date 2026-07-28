@@ -6,6 +6,7 @@ Credentials chargés depuis .env (jamais codés en dur).
 import os
 import psycopg2
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
@@ -24,11 +25,19 @@ def get_postgres_connection():
 
 
 def get_postgres_engine():
-    """Ouvre un engine SQLAlchemy — requis par pandas.read_sql (évite le warning)."""
-    password = os.getenv("PG_PASSWORD") or ""
-    url = (
-        f"postgresql+psycopg2://{os.getenv('PG_USER')}:{password}"
-        f"@{os.getenv('PG_HOST')}:{os.getenv('PG_PORT')}/{os.getenv('PG_DATABASE')}"
+    """Ouvre un engine SQLAlchemy — requis par pandas.read_sql (évite le warning).
+
+    Utilise URL.create() plutôt qu'une f-string : gère automatiquement
+    l'encodage des caractères spéciaux (@, :, /...) dans le mot de passe,
+    qui casseraient sinon le format de l'URL de connexion.
+    """
+    url = URL.create(
+        drivername="postgresql+psycopg2",
+        username=os.getenv("PG_USER"),
+        password=os.getenv("PG_PASSWORD"),
+        host=os.getenv("PG_HOST"),
+        port=int(os.getenv("PG_PORT")),
+        database=os.getenv("PG_DATABASE"),
     )
     return create_engine(url)
 

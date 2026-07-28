@@ -35,7 +35,7 @@ MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
 | Module                                  | Dossier           | Statut   |
 | --------------------------------------- | ------------------| ---------|
 | SQL N1→N6                               | sql               | Terminé  |
-| Bases de Données (PostgreSQL + MongoDB) | database          | En cours |
+| Bases de Données (PostgreSQL + MongoDB) | database          | Terminé  |
 | Docker                                  | docker            | Terminé  |
 | Cloud AWS/GCP                           | cloud             | -        |
 | Pipelines & ETL (Airflow + dbt + Spark) | pipelines + spark | -        |
@@ -113,6 +113,40 @@ Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sq
 - `pipeline_rapport.py` — pipeline final : extrait ventes (PostgreSQL, via `get_postgres_engine()` SQLAlchemy) + avis + activité (MongoDB), croise avec Pandas, exporte `data/processed/rapport_produits.csv`
 
 ⚠️ `faker` et `sqlalchemy` (déjà présent) requis dans `requirements.txt`
+
+---
+
+## Docker testé de bout en bout
+
+Conteneurise l'ensemble : PostgreSQL + MongoDB + conteneur ETL exécutant le pipeline réel (N9/N10) — pas de script factice, les vrais scripts du projet.
+
+Validé en conditions réelles : init automatique du schéma PostgreSQL (7 tables + 5 migrations) et des 3 collections MongoDB sur volumes vierges, pipeline complet exécuté avec succès dans le conteneur (`mohdata-etl exited with code 0`), données vérifiées visuellement via DBeaver (PostgreSQL) et MongoDB Compass (MongoDB, 48 documents `avis_clients` confirmés).
+
+```
+docker
+├── docker-compose.yml     # 3 services : postgres, mongodb, etl
+├── .env.docker.example    # template credentials (copier en .env.docker, jamais commité)
+└── etl-image              # infrastructure de build UNIQUEMENT (pas de logique métier)
+    ├── Dockerfile         # build le conteneur ETL depuis etl/ (racine du repo)
+    ├── requirements.txt   # dépendances slim du conteneur (pas le requirements.txt complet du repo)
+    └── wait_and_run.py    # attend que PostgreSQL/MongoDB soient prêts, puis lance le pipeline
+```
+
+⚠️ `etl-image/` (dans `docker/`) ≠ `etl/` (racine du repo) : le premier ne contient que l'infrastructure de conteneurisation, le second le vrai code Python métier (N9/N10). Renommé explicitement pour éviter la confusion entre les deux.
+
+**Initialisation automatique au premier démarrage** (dossier de volume vide) :
+- PostgreSQL : `sql/schema/00_schema_mohdatashop.sql` + les 5 migrations, dans l'ordre
+- MongoDB : `database/mongodb/init_collections.js` (3 collections + données de départ)
+
+**Utilisation :**
+
+```bash
+cd docker
+cp .env.docker.example .env.docker
+# éditer .env.docker, remplir POSTGRES_PASSWORD/PG_PASSWORD (mêmes valeurs)
+
+docker compose up --build
+```
 
 ---
 
