@@ -8,6 +8,7 @@ Load     : rapport CSV dans data/processed/
 Referme la roadmap Bases de Données (N1 -> N10).
 """
 
+import os
 import pandas as pd
 
 from etl.db_connections import get_postgres_engine, get_mongo_database
@@ -73,6 +74,15 @@ def construire_rapport() -> pd.DataFrame:
     return rapport.sort_values("chiffre_affaires", ascending=False)
 
 
+def sauvegarder_rapport(rapport: pd.DataFrame, chemin_sortie: Path) -> None:
+    """Écrit le rapport en CSV de façon atomique : écrit dans un .tmp puis renomme.
+    Évite un fichier corrompu/partiel si le process crash pendant l'écriture."""
+    chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
+    chemin_tmp = chemin_sortie.with_suffix(".tmp.csv")
+    rapport.to_csv(chemin_tmp, index=False)
+    os.replace(chemin_tmp, chemin_sortie)  # opération atomique du système de fichiers
+
+
 if __name__ == "__main__":
     rapport = construire_rapport()
 
@@ -82,6 +92,5 @@ if __name__ == "__main__":
     # fonctionne identiquement en lancement direct et sous Airflow.
     BASE_DIR = Path(__file__).resolve().parent.parent
     chemin_sortie = BASE_DIR / "data" / "processed" / "rapport_produits.csv"
-    chemin_sortie.parent.mkdir(parents=True, exist_ok=True)  # crée le dossier s'il n'existe pas
-    rapport.to_csv(chemin_sortie, index=False)
+    sauvegarder_rapport(rapport, chemin_sortie)
     print(f"\nRapport exporté : {chemin_sortie}")
