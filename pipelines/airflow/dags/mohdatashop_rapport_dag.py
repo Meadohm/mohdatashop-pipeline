@@ -18,7 +18,7 @@ def mohdatashop_rapport_dag():
 
     @task
     def extract_ventes():
-        return extraire_ventes_postgres().to_json()
+        return extraire_ventes_postgres().to_json() # ceci est écrit dans XCom
 
     @task
     def extract_avis():
@@ -29,7 +29,7 @@ def mohdatashop_rapport_dag():
         return extraire_activite_mongo().to_json()
 
     @task
-    def transform_et_charger(ventes_json, avis_json, activite_json):
+    def transform_et_charger(ventes_json, avis_json, activite_json): # ceci est lu depuis XCom
         import pandas as pd
         from pathlib import Path
 
