@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: postgres
+    schema: public
+    tables:
+      - name: produits
+      - name: categories
+      - name: lignes_commande
+      - name: stg_avis_clients
+      - name: stg_logs_activite
