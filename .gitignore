@@ -56,3 +56,6 @@ docker/.env.docker
 .idea/
 *.swp
 docker/logs/*.log
+pipelines/dbt/mohdatashop_dbt/target/
+pipelines/dbt/mohdatashop_dbt/dbt_packages/
+pipelines/dbt/mohdatashop_dbt/logs/
