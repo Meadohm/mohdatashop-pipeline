@@ -55,3 +55,4 @@ docker/.env.docker
 .vscode/
 .idea/
 *.swp
+docker/logs/*.log
