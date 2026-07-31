@@ -55,6 +55,8 @@ docker/.env.docker
 .vscode/
 .idea/
 *.swp
+
+# dbt 
 docker/logs/*.log
 pipelines/dbt/mohdatashop_dbt/target/
 pipelines/dbt/mohdatashop_dbt/dbt_packages/
