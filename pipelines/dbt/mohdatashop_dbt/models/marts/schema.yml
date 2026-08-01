@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: rapport_produits
+    columns:
+      - name: produit_id
+        tests:
+          - not_null
+          - unique
+      - name: chiffre_affaires
+        tests:
+          - not_null
