@@ -76,6 +76,8 @@ services:
       - ../pipelines/airflow/dags:/opt/airflow/dags
       - ../etl:/opt/airflow/etl
       - ../data/processed:/opt/airflow/data/processed
+      - ../pipelines/dbt:/opt/airflow/pipelines/dbt
+      - ../pipelines/dbt/profiles_docker.yml:/opt/airflow/.dbt/profiles.yml
     depends_on:
       - postgres
       - mongodb

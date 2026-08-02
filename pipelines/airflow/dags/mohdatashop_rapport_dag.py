@@ -1,11 +1,12 @@
 from airflow.decorators import dag, task
+from airflow.operators.bash import BashOperator
 from datetime import datetime
 
-from etl.pipeline_rapport import (
-    extraire_ventes_postgres,
-    extraire_avis_mongo,
-    extraire_activite_mongo,
+from etl.load_mongo_to_postgres import (
+    charger_avis_vers_postgres,
+    charger_logs_activite_vers_postgres,
 )
+
 
 @dag(
     dag_id="mohdatashop_rapport",
@@ -17,36 +18,22 @@ from etl.pipeline_rapport import (
 def mohdatashop_rapport_dag():
 
     @task
-    def extract_ventes():
-        return extraire_ventes_postgres().to_json() # ceci est écrit dans XCom
+    def charger_avis():
+        charger_avis_vers_postgres()
 
     @task
-    def extract_avis():
-        return extraire_avis_mongo().to_json()
+    def charger_activite():
+        charger_logs_activite_vers_postgres()
 
-    @task
-    def extract_activite():
-        return extraire_activite_mongo().to_json()
+    dbt_run = BashOperator(
+        task_id="dbt_run",
+        bash_command=(
+            "cd /opt/airflow/pipelines/dbt/mohdatashop_dbt && "
+            "dbt run --profiles-dir /opt/airflow/.dbt"
+        ),
+    )
 
-    @task
-    def transform_et_charger(ventes_json, avis_json, activite_json): # ceci est lu depuis XCom
-        import pandas as pd
-        from pathlib import Path
+    [charger_avis(), charger_activite()] >> dbt_run
 
-        ventes = pd.read_json(ventes_json)
-        avis = pd.read_json(avis_json)
-        activite = pd.read_json(activite_json)
-
-        rapport = ventes.merge(avis, on="produit_id", how="left")
-        rapport = rapport.merge(activite, on="produit_id", how="left")
-        rapport["note_moyenne"] = rapport["note_moyenne"].round(1)
-        rapport["nb_avis"] = rapport["nb_avis"].fillna(0).astype(int)
-        rapport["nb_consultations"] = rapport["nb_consultations"].fillna(0).astype(int)
-
-        chemin = Path("/opt/airflow/data/processed/rapport_produits.csv")
-        chemin.parent.mkdir(parents=True, exist_ok=True)
-        rapport.to_csv(chemin, index=False)
-
-    transform_et_charger(extract_ventes(), extract_avis(), extract_activite())
 
 mohdatashop_rapport_dag()
