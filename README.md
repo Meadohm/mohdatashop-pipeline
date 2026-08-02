@@ -2,7 +2,7 @@
 
 Pipeline de données complet pour **MohdataShop**, boutique e-commerce fictive basée à Abidjan.
 Projet fil conducteur de ma transition vers Data Engineer Junior - construit progressivement
-au fil des modules : SQL => Bases de Données => Docker => Cloud => Pipelines & ETL.
+au fil des modules : SQL => Bases de Données => Docker => Pipelines & ETL => Cloud => Power BI.
 
 ---
 
@@ -23,23 +23,28 @@ au fil des modules : SQL => Bases de Données => Docker => Cloud => Pipelines & 
 ```
 Sources              Transform                 Load              Visualise
 -------              ---------                 ----              ---------
-CSV / API    =>      Python + dbt      =>      PostgreSQL     => Power BI
-PostgreSQL   =>      PySpark           =>      S3 / Redshift  => Dashboard
-MongoDB      =>      Airflow DAG       =>      BigQuery       => Rapport
+PostgreSQL   =>      Python (loader)   =>      PostgreSQL     => Power BI
+MongoDB      =>      dbt (SQL)         =>      (entrepôt      => Dashboard
+             =>      PySpark                    unique)          Rapport
+Orchestration : Apache Airflow (Docker)
 ```
+
+Architecture actuelle (Pipelines & ETL) : PostgreSQL et MongoDB alimentent un **entrepôt PostgreSQL unique**. Un loader Python (`etl/load_mongo_to_postgres.py`) copie les collections Mongo pertinentes en tables staging PostgreSQL ; **dbt** transforme ensuite tout en SQL (staging → mart). Airflow orchestre l'ensemble. Il n'y a plus de fichier CSV généré par le pipeline courant — la source de vérité est la table PostgreSQL `rapport_produits` (voir section dbt).
 
 ---
 
 ## Roadmap de construction
 
-| Module                                  | Dossier           | Statut   |
-| --------------------------------------- | ------------------| ---------|
-| SQL N1→N6                               | sql               | Terminé  |
-| Bases de Données (PostgreSQL + MongoDB) | database          | Terminé  |
-| Docker                                  | docker            | Terminé  |
-| Cloud AWS/GCP                           | cloud             | -        |
-| Pipelines & ETL (Airflow + dbt + Spark) | pipelines + spark | -        |
-| Power BI                                | powerbi           | -        |
+| Module                                   | Dossier             | Statut   |
+| -----------------------------------------| ------------------- | -------- |
+| SQL N1→N6                                | sql                 | Terminé  |
+| Bases de Données (PostgreSQL + MongoDB)  | database            | Terminé  |
+| Docker                                   | docker              | Terminé  |
+| Pipelines & ETL — Airflow                | pipelines/airflow   | Terminé  |
+| Pipelines & ETL — dbt                    | pipelines/dbt       | Terminé  |
+| Pipelines & ETL — Spark                  | spark               | En cours |
+| Cloud AWS/GCP                            | cloud               | -        |
+| Power BI                                 | powerbi             | -        |
 
 ---
 
@@ -109,8 +114,8 @@ Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sq
 
 **Pipeline complet (N10)** — `etl/`, referme la roadmap Bases de Données :
 
-- `generate_fake_data.py` — génère **300 clients** (PostgreSQL) + **8000 `logs_activite`** (MongoDB) + **avis pour ~15% des clients** (MongoDB, distribution de notes réaliste pondérée positive) via **Faker** (locale `fr_FR`). Remplace le volume trop faible des données statiques (8 clients réutilisés en boucle, 2 avis fixes) par un jeu de données réaliste. Utile aussi pour observer un vrai `Index Scan` côté PostgreSQL avec du volume (cf. N4, limite atteinte faute de volume à l'époque)
-- `pipeline_rapport.py` — pipeline final : extrait ventes (PostgreSQL, via `get_postgres_engine()` SQLAlchemy) + avis + activité (MongoDB), croise avec Pandas, exporte `data/processed/rapport_produits.csv`
+- `generate_fake_data.py` — génère **300 clients** (PostgreSQL) + **8000 `logs_activite`** (MongoDB) + **avis pour ~15% des clients** (MongoDB, distribution de notes réaliste pondérée positive) via **Faker** (locale `fr_FR`). Script de **seed**, jamais exécuté par un DAG planifié (non idempotent par nature, cf. section Airflow).
+- `pipeline_rapport.py` — pipeline pandas historique : extrait ventes (PostgreSQL) + avis + activité (MongoDB), croise avec Pandas, exporte un CSV. **Conservé comme trace de l'approche initiale (avant migration dbt) mais n'est plus le pipeline exécuté en production** — remplacé par l'approche dbt (voir section dédiée). Le fichier `data/processed/rapport_produits.csv` qu'il produit est un artefact figé, pas régénéré automatiquement.
 
 ⚠️ `faker` et `sqlalchemy` (déjà présent) requis dans `requirements.txt`
 
@@ -118,21 +123,23 @@ Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sq
 
 ## Docker testé de bout en bout
 
-Conteneurise l'ensemble : PostgreSQL + MongoDB + conteneur ETL exécutant le pipeline réel (N9/N10) — pas de script factice, les vrais scripts du projet.
+Conteneurise l'ensemble : PostgreSQL + MongoDB + conteneur ETL (seed/démo) + conteneur Airflow (orchestration).
 
-Validé en conditions réelles : init automatique du schéma PostgreSQL (7 tables + 5 migrations) et des 3 collections MongoDB sur volumes vierges, pipeline complet exécuté avec succès dans le conteneur (`mohdata-etl exited with code 0`), données vérifiées visuellement via DBeaver (PostgreSQL) et MongoDB Compass (MongoDB, 48 documents `avis_clients` confirmés).
+Validé en conditions réelles : init automatique du schéma PostgreSQL (7 tables + 5 migrations) et des 3 collections MongoDB sur volumes vierges, pipeline exécuté avec succès (`mohdata-etl exited with code 0`), données vérifiées visuellement via DBeaver (PostgreSQL) et MongoDB Compass (MongoDB, 48 documents `avis_clients` confirmés).
 
 ```
 docker
-├── docker-compose.yml     # 3 services : postgres, mongodb, etl
+├── docker-compose.yml     # 4 services : postgres, mongodb, etl, airflow
 ├── .env.docker.example    # template credentials (copier en .env.docker, jamais commité)
-└── etl-image              # infrastructure de build UNIQUEMENT (pas de logique métier)
-    ├── Dockerfile         # build le conteneur ETL depuis etl/ (racine du repo)
-    ├── requirements.txt   # dépendances slim du conteneur (pas le requirements.txt complet du repo)
-    └── wait_and_run.py    # attend que PostgreSQL/MongoDB soient prêts, puis lance le pipeline
+├── etl-image              # infrastructure de build du conteneur seed/démo
+│   ├── Dockerfile
+│   ├── requirements.txt   # dépendances slim (pas le requirements.txt complet du repo)
+│   └── wait_and_run.py    # attend Postgres/Mongo prêts, puis lance generate_fake_data + pipeline_rapport
+└── airflow-image          # infrastructure de build du conteneur d'orchestration
+    └── Dockerfile         # apache/airflow + dépendances etl + dbt-postgres (contraintes officielles Airflow)
 ```
 
-⚠️ `etl-image/` (dans `docker/`) ≠ `etl/` (racine du repo) : le premier ne contient que l'infrastructure de conteneurisation, le second le vrai code Python métier (N9/N10). Renommé explicitement pour éviter la confusion entre les deux.
+⚠️ `etl-image/` (dans `docker/`) ≠ `etl/` (racine du repo) : le premier ne contient que l'infrastructure de conteneurisation, le second le vrai code Python métier.
 
 **Initialisation automatique au premier démarrage** (dossier de volume vide) :
 - PostgreSQL : `sql/schema/00_schema_mohdatashop.sql` + les 5 migrations, dans l'ordre
@@ -150,14 +157,80 @@ docker compose up --build
 
 ---
 
+## Pipelines & ETL — Orchestration Airflow
+
+Airflow orchestre le pipeline de bout en bout dans un conteneur dédié (mode `standalone`, `SequentialExecutor` — suffisant pour ce volume de tasks, pas fait pour la production).
+
+DAG unique `mohdatashop_rapport` (`pipelines/airflow/dags/mohdatashop_rapport_dag.py`), TaskFlow API, `@daily`, 2 retries :
+
+```
+charger_avis      ─┐
+charger_activite  ─┼─→ dbt_run
+```
+
+- `charger_avis` / `charger_activite` (tasks parallèles) : appellent `etl/load_mongo_to_postgres.py`, copient les collections Mongo `avis_clients`/`logs_activite` vers les tables PostgreSQL `stg_avis_clients`/`stg_logs_activite`. Idempotent par **TRUNCATE + append** (pas de `DROP TABLE` : des vues dbt dépendent de ces tables, Postgres refuse de dropper une table référencée).
+- `dbt_run` (`BashOperator`) : lance `dbt run` dans le conteneur, credentials via `pipelines/dbt/profiles_docker.yml` (monté dans le conteneur, `host: postgres` — nom de service Docker, pas `localhost`).
+
+Testé en conditions réelles : les 3 tasks passent au vert, `rapport_produits` (table PostgreSQL, matérialisée par dbt) recalculée à chaque run avec des données à jour.
+
+⚠️ `etl/generate_fake_data.py` n'est **jamais** appelé par le DAG — un script de seed régénéré chaque jour casserait l'idempotence du rapport (nouvelles données aléatoires à chaque run).
+
+---
+
+## Pipelines & ETL — dbt
+
+Transforme les données déjà en PostgreSQL en SQL pur (approche **ELT** : extraction/chargement minimal via Python, toute la transformation en SQL versionné, testé, documenté).
+
+```
+pipelines/dbt/mohdatashop_dbt/
+├── models/
+│   ├── staging/
+│   │   ├── sources.yml          # déclare les tables/vues sources (5 : produits, categories,
+│   │   │                        #   lignes_commande, stg_avis_clients, stg_logs_activite)
+│   │   ├── stg_ventes.sql       # vue — ventes par produit (jointure produits/categories/lignes_commande)
+│   │   ├── stg_avis.sql         # vue — note moyenne + nb avis par produit
+│   │   ├── stg_activite.sql     # vue — nb consultations par produit
+│   │   └── schema.yml           # tests not_null / unique sur produit_id (3 modèles)
+│   └── marts/
+│       ├── rapport_produits.sql # TABLE (materialized='table') — mart final, 3× ref(),
+│       │                        #   reproduit le rapport historique pandas, en SQL
+│       └── schema.yml           # tests sur produit_id + chiffre_affaires
+├── dbt_project.yml
+└── profiles_docker.yml          # profil de connexion pour le conteneur Airflow (non versionné
+                                 #   dans .dbt/ local — profil local séparé, voir ci-dessous)
+```
+
+`rapport_produits` (mart, matérialisé en **table**) remplace le CSV pandas comme sortie finale du pipeline. 9 tests dbt (`not_null`, `unique`), tous passants.
+
+⚠️ `metadata_produit_id` (issu de l'aplatissement JSON des logs Mongo) est en `double precision` côté staging (mélange de `NaN`/valeurs numériques côté pandas) — casté en `::int` dans `stg_activite.sql` pour la jointure.
+
+**Utilisation locale (hors Docker)** :
+
+```bash
+pip install dbt-postgres --break-system-packages
+cd pipelines/dbt/mohdatashop_dbt
+dbt debug     # valide la connexion (profil local dans ~/.dbt/profiles.yml, host: localhost)
+dbt run
+dbt test
+```
+
+**Documentation interactive** (lineage graph, colonnes, tests) :
+
+```bash
+dbt docs generate
+dbt docs serve --port 8081   # 8080 pris par Airflow
+```
+
+---
+
 ## Stack technique
 
 | Couche           | Outils                                    |
-| ---------------- | ----------------------------------------- |
+| ---------------- | ------------------------------------------|
 | Langage          | Python 3.10+                              |
 | Base de données  | PostgreSQL · MongoDB                      |
-| Orchestration    | Apache Airflow 2.x                        |
-| Transformation   | dbt · Pandas · PySpark                    |
+| Orchestration    | Apache Airflow 2.9 (Docker)               |
+| Transformation   | dbt · Pandas (historique) · PySpark       |
 | Cloud            | AWS (S3, Redshift, Glue) · GCP (BigQuery) |
 | Conteneurisation | Docker · Docker Compose                   |
 | Visualisation    | Power BI                                  |
@@ -170,28 +243,30 @@ docker compose up --build
 ```
 mohdatashop-pipeline
 ├── data
-│   ├── raw             # Données brutes (CSV, JSON)
-│   └── processed       # Données transformées
+│   ├── raw                  # Données brutes (CSV, JSON)
+│   └── processed            # rapport_produits.csv — artefact historique (pipeline pandas), non régénéré
 ├── sql
-│   ├── schema          # Création des tables (schéma initial)
-│   ├── queries         # Requêtes d'analyse
-│   └── migrations      # Évolutions du schéma
+│   ├── schema               # Création des tables (schéma initial)
+│   ├── queries              # Requêtes d'analyse
+│   └── migrations           # Évolutions du schéma
 ├── database
 │   ├── postgresql
-│   │   ├── migrations  # Migrations SQL versionnées (001, 002, ...)
-│   │   └── docs        # ERD et documentation du schéma
-│   ├── mongodb         # Config + scripts MongoDB
-│   └── docs            # Documentation transversale (SQL vs NoSQL, etc.)
-├── etl                 # Scripts Python ETL
+│   │   ├── migrations       # Migrations SQL versionnées (001, 002, ...)
+│   │   └── docs             # ERD et documentation du schéma
+│   ├── mongodb              # Config + scripts MongoDB
+│   └── docs                 # Documentation transversale (SQL vs NoSQL, etc.)
+├── etl                      # Scripts Python : connexions, seed, loader Mongo->Postgres
 ├── pipelines
-│   ├── airflow         # DAGs Airflow
-│   └── dbt             # Modèles dbt
-├── spark               # Scripts PySpark
+│   ├── airflow
+│   │   └── dags             # DAG mohdatashop_rapport
+│   └── dbt
+│       └── mohdatashop_dbt  # projet dbt (models/staging, models/marts)
+├── spark                    # Scripts PySpark
 ├── cloud
-│   ├── aws             # Configs AWS
-│   └── gcp             # Configs GCP
-├── docker              # Dockerfiles + docker-compose
-└── powerbi             # Rapports .pbix
+│   ├── aws                  # Configs AWS
+│   └── gcp                  # Configs GCP
+├── docker                   # Dockerfiles (etl-image, airflow-image) + docker-compose
+└── powerbi                  # Rapports .pbix
 ```
 
 ---
