@@ -23,13 +23,14 @@ au fil des modules : SQL => Bases de Données => Docker => Pipelines & ETL => Cl
 ```
 Sources              Transform                 Load              Visualise
 -------              ---------                 ----              ---------
-PostgreSQL   =>      Python (loader)   =>      PostgreSQL     => Power BI
-MongoDB      =>      dbt (SQL)         =>      (entrepôt      => Dashboard
+PostgreSQL   =>      Python (loader)   =>      PostgreSQL   =>   Power BI
+MongoDB      =>      dbt (SQL)         =>      (entrepôt    =>   Dashboard
              =>      PySpark                    unique)          Rapport
+
 Orchestration : Apache Airflow (Docker)
 ```
 
-Architecture actuelle (Pipelines & ETL) : PostgreSQL et MongoDB alimentent un **entrepôt PostgreSQL unique**. Un loader Python (`etl/load_mongo_to_postgres.py`) copie les collections Mongo pertinentes en tables staging PostgreSQL ; **dbt** transforme ensuite tout en SQL (staging → mart). Airflow orchestre l'ensemble. Il n'y a plus de fichier CSV généré par le pipeline courant — la source de vérité est la table PostgreSQL `rapport_produits` (voir section dbt).
+Architecture actuelle (Pipelines & ETL) : PostgreSQL et MongoDB alimentent un **entrepôt PostgreSQL unique**. Un loader Python (`etl/load_mongo_to_postgres.py`) copie les collections Mongo pertinentes en tables staging PostgreSQL ; **dbt** transforme ensuite tout en SQL (staging → mart). **PySpark** vient compléter l'analyse (agrégations, jointures, écriture multi-formats) sur les mêmes données, en manipulation directe. Airflow orchestre le pipeline dbt. Il n'y a plus de fichier CSV généré par le pipeline courant — la source de vérité est la table PostgreSQL `rapport_produits` (voir section dbt).
 
 ---
 
@@ -42,7 +43,8 @@ Architecture actuelle (Pipelines & ETL) : PostgreSQL et MongoDB alimentent un **
 | Docker                                   | docker              | Terminé  |
 | Pipelines & ETL — Airflow                | pipelines/airflow   | Terminé  |
 | Pipelines & ETL — dbt                    | pipelines/dbt       | Terminé  |
-| Pipelines & ETL — Spark                  | spark               | En cours |
+| Pipelines & ETL — Spark                  | spark               | Terminé  |
+| Pipelines & ETL — Streaming (notions)    | -                   | Terminé  |
 | Cloud AWS/GCP                            | cloud               | -        |
 | Power BI                                 | powerbi             | -        |
 
@@ -95,7 +97,7 @@ Collections MongoDB — implémentées en N7 (`database/mongodb/`) :
 ```
 logs_activite   { user_id, action, timestamp, metadata }
 historique_prix { produit_id, prix, date_changement }
-avis_clients    { client_id, produit_id, note, commentaire, date, verified_purchase ⚠️ }
+avis_clients    { client_id, produit_id, note, commentaire, date, verified_purchase ⚠️}
 ```
 
 ⚠️ `avis_clients.verified_purchase` — champ absent du schéma initial, ajouté a posteriori via `db.avis_clients.updateMany({}, {$set: {verified_purchase: true}})` dans `exemples_crud.js`, pour illustrer concrètement un avantage du NoSQL : ajout d'un champ à tous les documents existants sans migration `ALTER TABLE`. Volontaire, pas une dérive.
@@ -125,7 +127,7 @@ Synthèse SQL vs NoSQL (N8) : [`database/docs/sql_vs_nosql.md`](database/docs/sq
 
 Conteneurise l'ensemble : PostgreSQL + MongoDB + conteneur ETL (seed/démo) + conteneur Airflow (orchestration).
 
-Validé en conditions réelles : init automatique du schéma PostgreSQL (7 tables + 5 migrations) et des 3 collections MongoDB sur volumes vierges, pipeline exécuté avec succès (`mohdata-etl exited with code 0`), données vérifiées visuellement via DBeaver (PostgreSQL) et MongoDB Compass (MongoDB, 48 documents `avis_clients` confirmés).
+Validé en conditions réelles : init automatique du schéma PostgreSQL (7 tables + 5 migrations) et des 3 collections MongoDB sur volumes vierges, pipeline exécuté avec succès (`mohdata-etl exited with code 0`), données vérifiées visuellement via DBeaver (PostgreSQL) et MongoDB Compass (MongoDB, 48 documents `avis_clients` confirmés). Stabilité confirmée : 3 conteneurs (postgres, mongodb, airflow) tournant en continu plusieurs jours sans redémarrage, DAG re-déclenché manuellement avec succès après ajout des modules dbt et Spark.
 
 ```
 docker
@@ -182,16 +184,16 @@ Testé en conditions réelles : les 3 tasks passent au vert, `rapport_produits` 
 Transforme les données déjà en PostgreSQL en SQL pur (approche **ELT** : extraction/chargement minimal via Python, toute la transformation en SQL versionné, testé, documenté).
 
 ```
-pipelines/dbt/mohdatashop_dbt/
-├── models/
-│   ├── staging/
+pipelines/dbt/mohdatashop_dbt
+├── models
+│   ├── staging
 │   │   ├── sources.yml          # déclare les tables/vues sources (5 : produits, categories,
 │   │   │                        #   lignes_commande, stg_avis_clients, stg_logs_activite)
 │   │   ├── stg_ventes.sql       # vue — ventes par produit (jointure produits/categories/lignes_commande)
 │   │   ├── stg_avis.sql         # vue — note moyenne + nb avis par produit
 │   │   ├── stg_activite.sql     # vue — nb consultations par produit
 │   │   └── schema.yml           # tests not_null / unique sur produit_id (3 modèles)
-│   └── marts/
+│   └── marts
 │       ├── rapport_produits.sql # TABLE (materialized='table') — mart final, 3× ref(),
 │       │                        #   reproduit le rapport historique pandas, en SQL
 │       └── schema.yml           # tests sur produit_id + chiffre_affaires
@@ -223,6 +225,43 @@ dbt docs serve --port 8081   # 8080 pris par Airflow
 
 ---
 
+## Pipelines & ETL — PySpark
+
+Manipulation directe des données du projet avec PySpark (DataFrames, transformations/actions, lazy evaluation), en local, via connexion JDBC à PostgreSQL. Pas encore intégré à Airflow — usage manuel/exploratoire à ce stade, comme dbt avant son intégration au DAG.
+
+```
+spark
+├── premiere_analyse.py              # lecture rapport_produits (JDBC), filter + orderBy + show
+├── analyse_activite.py              # lecture stg_logs_activite, groupBy + count (par ville, par device)
+├── jointure_activite_produits.py    # join stg_logs_activite x produits, ecriture CSV (action write)
+├── formats_json_parquet.py          # ecriture + relecture Parquet et JSON depuis rapport_produits
+└── .gitignore                       # exclut output/ (resultats generes, non versionnes)
+```
+
+Concepts pratiqués sur données réelles du projet :
+- **DataFrame** (colonnes typées, pas de RDD brut) via lecture JDBC PostgreSQL
+- **Transformation vs action** : `filter`/`orderBy`/`groupBy`/`join` ne s'exécutent qu'au moment d'un `.show()`/`.count()`/`.write()`
+- **Lazy evaluation** : le plan complet est optimisé avant exécution, à l'appel de l'action
+- **Formats** : lecture/écriture CSV, JSON et Parquet (colonnaire, binaire, compressé — format standard pour le stockage intermédiaire en Data Engineering)
+
+⚠️ Nécessite Java (JDK 17+) en plus de `pyspark` — Spark tourne sur la JVM. Le driver JDBC PostgreSQL (`org.postgresql:postgresql:42.7.3`) est téléchargé automatiquement au premier lancement via `spark.jars.packages` (connexion internet requise une fois, puis mis en cache localement).
+
+**Utilisation** :
+
+```bash
+pip install pyspark --break-system-packages
+brew install openjdk@17
+# suivre les instructions Homebrew affichées pour lier le PATH et le symlink système
+
+python spark/premiere_analyse.py
+```
+
+Credentials PostgreSQL chargés depuis `.env` (comme `etl/db_connections.py`), jamais en dur dans les scripts.
+
+Streaming (Spark Streaming, Kafka) : notions posées (producer/topic/consumer, micro-batching), non implémentées — les données du projet sont générées par un script de seed ponctuel (`generate_fake_data.py`), pas un flux d'événements réels, ce qui rendrait une infrastructure Kafka disproportionnée par rapport à la valeur pédagogique apportée.
+
+---
+
 ## Stack technique
 
 | Couche           | Outils                                    |
@@ -230,7 +269,7 @@ dbt docs serve --port 8081   # 8080 pris par Airflow
 | Langage          | Python 3.10+                              |
 | Base de données  | PostgreSQL · MongoDB                      |
 | Orchestration    | Apache Airflow 2.9 (Docker)               |
-| Transformation   | dbt · Pandas (historique) · PySpark       |
+| Transformation   | dbt · PySpark · Pandas (historique)       |
 | Cloud            | AWS (S3, Redshift, Glue) · GCP (BigQuery) |
 | Conteneurisation | Docker · Docker Compose                   |
 | Visualisation    | Power BI                                  |
@@ -261,7 +300,7 @@ mohdatashop-pipeline
 │   │   └── dags             # DAG mohdatashop_rapport
 │   └── dbt
 │       └── mohdatashop_dbt  # projet dbt (models/staging, models/marts)
-├── spark                    # Scripts PySpark
+├── spark                    # Scripts PySpark (lecture/transformation/ecriture, formats multiples)
 ├── cloud
 │   ├── aws                  # Configs AWS
 │   └── gcp                  # Configs GCP
